@@ -18,4 +18,13 @@ describe("shouldShowFab", () => {
     expect(shouldShowFab("/recurring")).toBe(false);
     expect(shouldShowFab("/settings")).toBe(false);
   });
+
+  it("does not match substring look-alike routes", () => {
+    expect(shouldShowFab("/monthlyarchive")).toBe(false);
+    expect(shouldShowFab("/calendar-export")).toBe(false);
+  });
+
+  it("matches nested cluster subpaths", () => {
+    expect(shouldShowFab("/monthly/2026-07")).toBe(true);
+  });
 });
