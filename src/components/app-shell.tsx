@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  CalendarDays,
   ListOrdered,
   BarChart3,
   Repeat,
@@ -14,27 +13,30 @@ import {
   Star,
   Wallet,
   LogOut,
-  Menu,
   X,
   Inbox,
+  MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AccentToggle } from "@/components/accent-toggle";
 import { useTransactionUI } from "@/components/transaction-ui-provider";
+import { shouldShowFab } from "@/lib/nav";
+import { InstallMenuItem, InstallBanner } from "@/components/install-prompt";
 import { signOut } from "@/app/actions/auth";
 
 type NavItem = {
   href: string;
   label: string;
   icon: typeof LayoutDashboard;
-  match?: readonly string[]; // extra paths that also mark this item active
+  match?: readonly string[];
 };
 
+// Full nav (desktop sidebar). The daily/monthly/calendar overview all live
+// under "Dashboard" now, reached via the in-page ViewTabs switch.
 const NAV: readonly NavItem[] = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/daily", label: "Overview", icon: CalendarDays, match: ["/daily", "/monthly", "/calendar"] },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard, match: ["/", "/monthly", "/calendar"] },
   { href: "/transactions", label: "Transactions", icon: ListOrdered },
   { href: "/review", label: "Review", icon: Inbox },
   { href: "/statistics", label: "Statistics", icon: BarChart3 },
@@ -42,10 +44,10 @@ const NAV: readonly NavItem[] = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-// Primary tabs shown in the mobile bottom bar.
-const MOBILE_NAV = NAV.filter((n) =>
-  ["/", "/daily", "/transactions", "/statistics"].includes(n.href),
-);
+// Mobile bottom bar: three routes + a More button (rendered separately).
+const BOTTOM_NAV = NAV.filter((n) => ["/", "/transactions", "/statistics"].includes(n.href));
+// Everything else lives in the More sheet.
+const MORE_NAV = NAV.filter((n) => ["/review", "/recurring", "/settings"].includes(n.href));
 
 function isActive(pathname: string, item: NavItem) {
   const paths = item.match ?? [item.href];
@@ -63,10 +65,11 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const ui = useTransactionUI();
-  const [menuOpen, setMenuOpen] = React.useState(false);
+  const [moreOpen, setMoreOpen] = React.useState(false);
 
-  // Close the mobile drawer whenever the route changes.
-  React.useEffect(() => setMenuOpen(false), [pathname]);
+  React.useEffect(() => setMoreOpen(false), [pathname]);
+
+  const showFab = shouldShowFab(pathname);
 
   return (
     <div className="flex min-h-dvh">
@@ -78,10 +81,6 @@ export function AppShell({
           </div>
           <span className="font-semibold">Money</span>
         </div>
-
-        <Button className="mb-4" onClick={() => ui.add()}>
-          <Plus className="size-4" /> Add transaction
-        </Button>
 
         <nav className="flex-1 space-y-0.5">
           {NAV.map((item) => {
@@ -109,7 +108,8 @@ export function AppShell({
           })}
         </nav>
 
-        <div className="mt-2 border-t border-border pt-2">
+        <div className="mt-2 space-y-1 border-t border-border pt-2">
+          <InstallMenuItem />
           <div className="flex items-center justify-between px-1">
             <span className="truncate text-xs text-muted-foreground" title={email}>
               {email}
@@ -128,30 +128,19 @@ export function AppShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Mobile top bar */}
+        {/* Mobile top bar — brand only (no hamburger) */}
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background/80 px-3 py-2.5 backdrop-blur md:hidden">
           <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setMenuOpen(true)}
-              aria-label="Menu"
-              className="relative grid size-9 place-items-center rounded-md text-foreground hover:bg-accent"
-            >
-              <Menu className="size-5" />
-              {pendingCount > 0 && (
-                <span className="absolute right-1 top-1 size-2 rounded-full bg-primary" />
-              )}
-            </button>
             <Wallet className="size-5 text-primary" />
             <span className="font-semibold">Money</span>
           </div>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" aria-label="Bookmarks" onClick={ui.bookmarks}>
-              <Star className="size-4" />
-            </Button>
-            <AccentToggle />
-            <ThemeToggle />
-          </div>
+          <Button variant="ghost" size="icon" aria-label="Bookmarks" onClick={ui.bookmarks}>
+            <Star className="size-4" />
+          </Button>
         </header>
+
+        {/* First-visit iOS install banner (mobile only, self-hides otherwise) */}
+        <InstallBanner />
 
         {/* Desktop utility bar */}
         <div className="hidden items-center justify-end gap-2 border-b border-border px-6 py-2 md:flex">
@@ -163,9 +152,9 @@ export function AppShell({
         <main className="flex-1 overflow-x-clip px-4 pb-24 pt-4 md:px-6 md:pb-6">{children}</main>
       </div>
 
-      {/* Mobile bottom nav + FAB */}
+      {/* Mobile bottom nav: 3 routes + More */}
       <nav className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-border bg-card/95 py-1.5 backdrop-blur md:hidden">
-        {MOBILE_NAV.map((item) => {
+        {BOTTOM_NAV.map((item) => {
           const { href, label, icon: Icon } = item;
           return (
             <Link
@@ -181,48 +170,55 @@ export function AppShell({
             </Link>
           );
         })}
+        <button
+          onClick={() => setMoreOpen(true)}
+          aria-label="More"
+          className={cn(
+            "relative flex flex-col items-center gap-0.5 px-3 py-1 text-[10px] font-medium",
+            moreOpen ? "text-primary" : "text-muted-foreground",
+          )}
+        >
+          <MoreHorizontal className="size-5" />
+          More
+          {pendingCount > 0 && <span className="absolute right-2 top-0 size-2 rounded-full bg-primary" />}
+        </button>
       </nav>
-      <button
-        onClick={() => ui.add()}
-        aria-label="Add transaction"
-        className="fixed bottom-16 right-4 z-40 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 md:hidden"
-      >
-        <Plus className="size-6" />
-      </button>
 
-      {/* Mobile nav drawer — full menu incl. Recurring & Settings */}
-      {menuOpen && (
+      {/* Add FAB — dashboard cluster only, all screen sizes */}
+      {showFab && (
+        <button
+          onClick={() => ui.add()}
+          aria-label="Add transaction"
+          className="fixed bottom-20 right-4 z-40 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 md:bottom-6"
+        >
+          <Plus className="size-6" />
+        </button>
+      )}
+
+      {/* More bottom sheet */}
+      {moreOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setMenuOpen(false)} />
-          <div className="absolute left-0 top-0 flex h-full w-72 max-w-[82%] flex-col border-r border-border bg-card p-3">
-            <div className="mb-4 flex items-center justify-between px-1">
-              <div className="flex items-center gap-2">
-                <div className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
-                  <Wallet className="size-4.5" />
-                </div>
-                <span className="font-semibold">Money</span>
-              </div>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setMoreOpen(false)} />
+          <div className="absolute inset-x-0 bottom-0 flex max-h-[85vh] flex-col rounded-t-2xl border-t border-border bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className="mb-3 flex items-center justify-between px-1">
+              <span className="text-sm font-semibold">More</span>
               <button
-                onClick={() => setMenuOpen(false)}
-                aria-label="Close menu"
+                onClick={() => setMoreOpen(false)}
+                aria-label="Close"
                 className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
               >
                 <X className="size-4" />
               </button>
             </div>
 
-            <Button className="mb-4" onClick={() => { setMenuOpen(false); ui.add(); }}>
-              <Plus className="size-4" /> Add transaction
-            </Button>
-
-            <nav className="flex-1 space-y-0.5 overflow-y-auto">
-              {NAV.map((item) => {
+            <nav className="space-y-0.5 overflow-y-auto">
+              {MORE_NAV.map((item) => {
                 const { href, label, icon: Icon } = item;
                 return (
                   <Link
                     key={href}
                     href={href}
-                    onClick={() => setMenuOpen(false)}
+                    onClick={() => setMoreOpen(false)}
                     className={cn(
                       "flex items-center gap-2.5 rounded-md px-2.5 py-2.5 text-sm font-medium transition-colors",
                       isActive(pathname, item)
@@ -240,6 +236,16 @@ export function AppShell({
                   </Link>
                 );
               })}
+
+              <button
+                onClick={() => { setMoreOpen(false); ui.bookmarks(); }}
+                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <Star className="size-4" />
+                Bookmarks
+              </button>
+
+              <InstallMenuItem />
             </nav>
 
             <div className="mt-2 border-t border-border pt-2">
