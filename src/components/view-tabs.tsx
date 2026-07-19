@@ -6,7 +6,7 @@ import { CalendarDays, CalendarRange, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
-  { href: "/daily", label: "Daily", icon: CalendarDays },
+  { href: "/", label: "Daily", icon: CalendarDays },
   { href: "/monthly", label: "Monthly", icon: CalendarRange },
   { href: "/calendar", label: "Calendar", icon: Calendar },
 ] as const;

@@ -1,28 +1,58 @@
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { getTransactions } from "@/lib/queries";
-import { monthBounds, currentMonthISO, formatMonthLong } from "@/lib/format";
+import {
+  todayISO,
+  formatDateLong,
+  formatINR,
+  currentMonthISO,
+  monthBounds,
+  formatMonthLong,
+} from "@/lib/format";
 import { totals } from "@/lib/aggregate";
 import { BalanceCard } from "@/components/balance-card";
-import { GroupedTransactions } from "@/components/grouped-transactions";
+import { ViewTabs } from "@/components/view-tabs";
+import { DayNav } from "@/components/day-nav";
+import { SummaryTiles } from "@/components/summary-tiles";
+import { TransactionList } from "@/components/transaction-list";
+import { Card } from "@/components/ui/card";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ d?: string }>;
+}) {
+  const { d } = await searchParams;
+  const day = d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : todayISO();
+
   const month = currentMonthISO();
-  const { start, end } = monthBounds(month);
-  const monthTxns = await getTransactions({ start, end });
+  const { start: mStart, end: mEnd } = monthBounds(month);
+
+  const [dayTxns, monthTxns] = await Promise.all([
+    getTransactions({ start: day, end: day }),
+    getTransactions({ start: mStart, end: mEnd }),
+  ]);
+  const t = totals(dayTxns);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-3.5">
+    <div className="mx-auto max-w-2xl space-y-4">
       <BalanceCard data={totals(monthTxns)} label={formatMonthLong(month)} />
 
-      {/* This month's transactions — the main thing */}
-      <div className="flex items-center justify-between px-0.5">
-        <h2 className="text-sm font-semibold">This month</h2>
-        <Link href="/monthly" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-          Open monthly <ArrowRight className="size-3" />
-        </Link>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <ViewTabs />
+        <DayNav day={day} />
       </div>
-      <GroupedTransactions transactions={monthTxns} emptyLabel="No transactions yet this month. Tap + to add one." />
+
+      <SummaryTiles data={t} />
+
+      <Card className="overflow-hidden">
+        <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/30 px-3 py-2">
+          <span className="truncate text-sm font-medium">{formatDateLong(day)}</span>
+          <span className="flex shrink-0 gap-2.5 text-xs">
+            {t.income > 0 && <span className="tabular text-income">+{formatINR(t.income)}</span>}
+            {t.expense > 0 && <span className="tabular text-expense">−{formatINR(t.expense)}</span>}
+          </span>
+        </div>
+        <TransactionList transactions={dayTxns} showDate={false} emptyLabel="Nothing on this day. Tap + to add." />
+      </Card>
     </div>
   );
 }
