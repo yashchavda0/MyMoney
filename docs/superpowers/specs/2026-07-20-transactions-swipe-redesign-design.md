@@ -11,7 +11,7 @@ Six related issues across the Transactions page and the Daily/Monthly/Calendar d
 3. Daily view shows the same date twice (DayNav's date field + a redundant date line above the transaction list), and `DayNav` is a fixed-width control leaving dead space on its right, unlike the full-width `MonthPicker`.
 4. The per-transaction 3-dot mobile action menu renders behind other content — its parent `Card` has `overflow-hidden`, which clips the `absolute`-positioned dropdown.
 5. The balance card (green/red income-vs-expense proportion bar) only renders on Daily. Swiping to Monthly/Calendar makes it disappear instead of staying present.
-6. Negative net figures show a literal `-` sign in red (e.g. `-₹500`) instead of relying on color alone. Calendar day cells also cramp on 5-6 digit amounts.
+6. Negative net figures at full precision (e.g. `-₹1,00,000.00`) are visually heavy/cramped, most obviously in Calendar day cells but also in the Net tile and balance card.
 
 ## Approach
 
@@ -58,13 +58,11 @@ Used for:
 - The mobile 3-dot action menu in `TransactionItem` (`transaction-list.tsx`) — replaces the current `absolute`-positioned dropdown, fixing issue #4.
 - The new Copy/Import overflow menu on the Transactions page.
 
-**Negative figure display**
+**Net figure display: compact formatting, native sign kept**
 
-`SummaryTiles`' Net tile, `BalanceCard`'s net line, and `CalendarGrid`'s per-day net all switch from `formatINR(value)` (which prints Intl's native `-₹500`) to `formatINR(Math.abs(value))`, keeping the existing red/green color logic as the only signal of direction. Per-transaction rows and the Income/Expense tiles are unaffected — those already display unsigned amounts with an explicit `+`/`−` prefix by design and are not part of this bug.
+New `formatINRCompact(amount)` in `lib/format.ts`: `₹<1000` unchanged, `₹85K` style for thousands, `₹1.2L` style for lakhs+ — always short enough to avoid wrapping/cramping, negative values keep Intl's native `-` (e.g. `-₹85K`). Confirmed with user: a `-` sign is fine once the number itself is compact; the problem was full-precision figures (`-₹1,00,000.00`), not the sign itself.
 
-**Calendar amount format**
-
-New `formatINRCompact(amount)` in `lib/format.ts`: `₹<1000` unchanged, `₹85K` style for thousands, `₹1.2L` style for lakhs+, always short enough to fit a calendar day cell without wrapping or truncation. Used only in `CalendarGrid`'s day cells; `formatINRShort` stays as-is for its other current callers.
+Applied to every net-figure display: `CalendarGrid`'s per-day net, `BalanceCard`'s net headline, and `SummaryTiles`' Net tile (replacing its current mobile-only `formatINRShort`/desktop `formatINR` split with `formatINRCompact` at all sizes). Red/green color coding by sign is unchanged. Income/Expense tiles and per-transaction rows are unaffected — those keep full `formatINR` and their explicit `+`/`−` prefix, not part of this fix. `formatINRShort` stays as-is for its other current callers (chart axes etc.).
 
 **Daily picker cleanup**
 
