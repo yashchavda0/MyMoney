@@ -15,53 +15,92 @@ type BeforeInstallPromptEvent = Event & {
 function detectStandalone(): boolean {
   if (typeof window === "undefined") return false;
   const mm = window.matchMedia?.("(display-mode: standalone)").matches ?? false;
-  // iOS Safari exposes navigator.standalone instead of display-mode.
   const iosStandalone = (window.navigator as unknown as { standalone?: boolean }).standalone === true;
   return mm || iosStandalone;
 }
 
 function detectIOS(): boolean {
   if (typeof window === "undefined") return false;
-  const ua = window.navigator.userAgent;
-  return /iphone|ipad|ipod/i.test(ua);
+  return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+}
+
+// --- Shared, module-level install state -------------------------------------
+// `beforeinstallprompt` is a one-shot event the browser dispatches shortly
+// after load. A component mounted later (e.g. the More sheet, opened on
+// demand) would miss it if it listened on its own. Capture it once at module
+// scope and fan out to every useInstall() subscriber via useSyncExternalStore.
+let deferredPrompt: BeforeInstallPromptEvent | null = null;
+let canPromptFlag = false;
+let installedFlag = false;
+let snapshot = { canPrompt: false, installed: false };
+const listeners = new Set<() => void>();
+
+function emit() {
+  snapshot = { canPrompt: canPromptFlag, installed: installedFlag };
+  for (const l of listeners) l();
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredPrompt = e as BeforeInstallPromptEvent;
+    canPromptFlag = true;
+    emit();
+  });
+  window.addEventListener("appinstalled", () => {
+    installedFlag = true;
+    canPromptFlag = false;
+    deferredPrompt = null;
+    emit();
+  });
+}
+
+function subscribe(cb: () => void) {
+  listeners.add(cb);
+  return () => {
+    listeners.delete(cb);
+  };
+}
+function getSnapshot() {
+  return snapshot;
+}
+const SERVER_SNAPSHOT = { canPrompt: false, installed: false };
+function getServerSnapshot() {
+  return SERVER_SNAPSHOT;
+}
+
+// One-time standalone check, deferred to after first paint so the initial
+// client render matches the server (both installed=false) — no hydration
+// mismatch. Flips installedFlag and notifies if we're already installed.
+let standaloneChecked = false;
+function ensureStandaloneChecked() {
+  if (standaloneChecked) return;
+  standaloneChecked = true;
+  if (detectStandalone()) {
+    installedFlag = true;
+    canPromptFlag = false;
+    emit();
+  }
 }
 
 /** Shared install state: native-prompt availability + platform + installed flag. */
 export function useInstall() {
-  const [installed, setInstalled] = React.useState(false);
+  const { canPrompt, installed } = React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [isIOS, setIsIOS] = React.useState(false);
-  const deferred = React.useRef<BeforeInstallPromptEvent | null>(null);
-  const [canPrompt, setCanPrompt] = React.useState(false);
 
   React.useEffect(() => {
-    setInstalled(detectStandalone());
     setIsIOS(detectIOS());
-
-    const onBeforeInstall = (e: Event) => {
-      e.preventDefault();
-      deferred.current = e as BeforeInstallPromptEvent;
-      setCanPrompt(true);
-    };
-    const onInstalled = () => {
-      setInstalled(true);
-      setCanPrompt(false);
-      deferred.current = null;
-    };
-    window.addEventListener("beforeinstallprompt", onBeforeInstall);
-    window.addEventListener("appinstalled", onInstalled);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onBeforeInstall);
-      window.removeEventListener("appinstalled", onInstalled);
-    };
+    ensureStandaloneChecked();
   }, []);
 
   const promptInstall = React.useCallback(async () => {
-    const evt = deferred.current;
+    const evt = deferredPrompt;
     if (!evt) return false;
     await evt.prompt();
     await evt.userChoice;
-    deferred.current = null;
-    setCanPrompt(false);
+    deferredPrompt = null;
+    canPromptFlag = false;
+    emit();
     return true;
   }, []);
 
@@ -93,7 +132,6 @@ export function InstallMenuItem({ className }: { className?: string }) {
   const [showHelp, setShowHelp] = React.useState(false);
 
   if (installed) return null;
-  // If not installable natively and not iOS, there is nothing useful to offer.
   if (!canPrompt && !isIOS) return null;
 
   const onClick = () => {
@@ -104,6 +142,7 @@ export function InstallMenuItem({ className }: { className?: string }) {
   return (
     <>
       <button
+        type="button"
         onClick={onClick}
         className={cn(
           "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
@@ -123,14 +162,13 @@ export function InstallMenuItem({ className }: { className?: string }) {
 /** First-visit dismissible banner for iOS Safari users who haven't installed. */
 export function InstallBanner() {
   const { installed, isIOS, canPrompt } = useInstall();
-  const [dismissed, setDismissed] = React.useState(true); // default hidden until we confirm
+  const [dismissed, setDismissed] = React.useState(true); // default hidden until confirmed
   const [showHelp, setShowHelp] = React.useState(false);
 
   React.useEffect(() => {
     setDismissed(window.localStorage.getItem(DISMISS_KEY) === "1");
   }, []);
 
-  // Native-installable platforms use the menu item; the banner is iOS-only.
   if (installed || dismissed || !isIOS || canPrompt) return null;
 
   const close = () => {
@@ -144,11 +182,11 @@ export function InstallBanner() {
         <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
           <Plus className="size-4" />
         </div>
-        <button className="min-w-0 flex-1 text-left" onClick={() => setShowHelp(true)}>
+        <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setShowHelp(true)}>
           <span className="block font-medium">Install Money</span>
           <span className="block truncate text-xs text-muted-foreground">Add to your Home Screen for quick access.</span>
         </button>
-        <button onClick={close} aria-label="Dismiss" className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent">
+        <button type="button" onClick={close} aria-label="Dismiss" className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent">
           <X className="size-4" />
         </button>
       </div>
