@@ -3,6 +3,7 @@ import { monthBounds, currentMonthISO } from "@/lib/format";
 import { totals, byCategory } from "@/lib/aggregate";
 import { ViewTabs } from "@/components/view-tabs";
 import { MonthPicker } from "@/components/month-picker";
+import { MonthSwipe } from "@/components/month-swipe";
 import { SummaryTiles } from "@/components/summary-tiles";
 import { CategoryBars } from "@/components/category-bars";
 import { GroupedTransactions } from "@/components/grouped-transactions";
@@ -20,26 +21,26 @@ export default async function MonthlyPage({
   const expenseCats = byCategory(txns.filter((t) => t.type === "expense"));
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <MonthSwipe month={month}>
+      <div className="mx-auto max-w-2xl space-y-3">
         <ViewTabs />
         <MonthPicker month={month} />
+
+        <SummaryTiles data={totals(txns)} />
+
+        {expenseCats.length > 0 && (
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle>Spending by category</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-1">
+              <CategoryBars groups={expenseCats} metric="expense" />
+            </CardContent>
+          </Card>
+        )}
+
+        <GroupedTransactions transactions={txns} emptyLabel="No transactions this month." />
       </div>
-
-      <SummaryTiles data={totals(txns)} />
-
-      {expenseCats.length > 0 && (
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle>Spending by category</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-1">
-            <CategoryBars groups={expenseCats} metric="expense" />
-          </CardContent>
-        </Card>
-      )}
-
-      <GroupedTransactions transactions={txns} emptyLabel="No transactions this month." />
-    </div>
+    </MonthSwipe>
   );
 }
