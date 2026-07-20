@@ -129,7 +129,7 @@ export function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile top bar — brand only (no hamburger) */}
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background/80 px-3 py-2.5 backdrop-blur md:hidden">
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background/80 px-3 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] backdrop-blur md:hidden">
           <div className="flex items-center gap-1.5">
             <Wallet className="size-5 text-primary" />
             <span className="font-semibold">Money</span>
@@ -149,11 +149,11 @@ export function AppShell({
           </Button>
         </div>
 
-        <main className="flex-1 overflow-x-clip px-4 pb-24 pt-4 md:px-6 md:pb-6">{children}</main>
+        <main className="flex-1 overflow-x-clip px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-4 md:px-6 md:pb-6">{children}</main>
       </div>
 
       {/* Mobile bottom nav: 3 routes + More */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-border bg-card/95 py-1.5 backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-border bg-card/95 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden">
         {BOTTOM_NAV.map((item) => {
           const { href, label, icon: Icon } = item;
           return (
@@ -189,7 +189,7 @@ export function AppShell({
         <button
           onClick={() => ui.add()}
           aria-label="Add transaction"
-          className="fixed bottom-20 right-4 z-40 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 md:bottom-6"
+          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-40 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 md:bottom-6"
         >
           <Plus className="size-6" />
         </button>

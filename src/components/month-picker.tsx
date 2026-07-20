@@ -35,15 +35,36 @@ export function MonthPicker({ month }: { month: string }) {
     setOpen(false);
   }
 
+  // Swipe left/right to step months. Ignored while the popover is open, and
+  // only fires when the gesture is clearly horizontal (not a vertical scroll).
+  const touchStart = React.useRef<{ x: number; y: number } | null>(null);
+  function onTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    touchStart.current = { x: t.clientX, y: t.clientY };
+  }
+  function onTouchEnd(e: React.TouchEvent) {
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!start || open) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) step(dx > 0 ? -1 : 1);
+  }
+
   return (
-    <div className="relative flex items-center gap-1">
+    <div
+      className="relative flex w-full items-center gap-1 sm:w-auto"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
       <Button variant="outline" size="icon-sm" aria-label="Previous month" onClick={() => step(-1)}>
         <ChevronLeft className="size-4" />
       </Button>
 
       <button
         onClick={() => setOpen((o) => !o)}
-        className="min-w-[8.5rem] rounded-md border border-border px-2 py-1 text-center text-sm font-medium transition-colors hover:bg-accent"
+        className="flex-1 rounded-md border border-border px-2 py-1 text-center text-sm font-medium transition-colors hover:bg-accent sm:min-w-[8.5rem] sm:flex-none"
       >
         {formatMonthLong(month)}
       </button>
