@@ -1,12 +1,11 @@
 import { getTransactions, getAccounts, getCategories } from "@/lib/queries";
 import type { TxnType } from "@/lib/supabase/types";
 import { totals } from "@/lib/aggregate";
-import { formatINR } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { TransactionsFilterBar } from "@/components/transactions-filter-bar";
-import { TransactionList } from "@/components/transaction-list";
+import { GroupedTransactions } from "@/components/grouped-transactions";
+import { SummaryTiles } from "@/components/summary-tiles";
 import { BulkTools } from "@/components/bulk-tools";
-import { Card } from "@/components/ui/card";
 
 interface SP {
   q?: string;
@@ -38,24 +37,18 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
   const t = totals(txns);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <PageHeader
         title="Transactions"
-        subtitle={
-          <>
-            {t.count} shown · <span className="text-income">+{formatINR(t.income)}</span> ·{" "}
-            <span className="text-expense">−{formatINR(t.expense)}</span> · net{" "}
-            <span className="tabular font-medium text-foreground">{formatINR(t.net)}</span>
-          </>
-        }
+        subtitle={`${t.count} shown`}
         actions={<BulkTools accounts={accounts} categories={categories} transactions={txns} />}
       />
 
       <TransactionsFilterBar accounts={accounts} categories={categories} />
 
-      <Card className="overflow-hidden">
-        <TransactionList transactions={txns} showDate emptyLabel="No transactions match these filters." />
-      </Card>
+      <SummaryTiles data={t} />
+
+      <GroupedTransactions transactions={txns} emptyLabel="No transactions match these filters." />
     </div>
   );
 }

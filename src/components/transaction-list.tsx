@@ -8,12 +8,12 @@ import { useTransactionUI } from "@/components/transaction-ui-provider";
 import { deleteTransaction, toggleBookmark } from "@/app/actions/transactions";
 import { formatINR, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { ActionMenu } from "@/components/ui/action-menu";
 
 function TransactionItem({ txn, showDate }: { txn: TransactionWithRefs; showDate?: boolean }) {
   const ui = useTransactionUI();
   const router = useRouter();
   const [busy, setBusy] = React.useState(false);
-  const [menuOpen, setMenuOpen] = React.useState(false);
 
   async function onDelete() {
     if (!window.confirm("Delete this transaction?")) return;
@@ -83,34 +83,9 @@ function TransactionItem({ txn, showDate }: { txn: TransactionWithRefs; showDate
         ))}
       </div>
 
-      {/* Mobile: single kebab → dropdown (keeps rows narrow, no horizontal scroll) */}
-      <div className="relative shrink-0 md:hidden">
-        <IconBtn label="Actions" onClick={() => setMenuOpen((o) => !o)}>
-          <MoreVertical className="size-4" />
-        </IconBtn>
-        {menuOpen && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-            <div className="absolute right-0 top-8 z-50 w-40 overflow-hidden rounded-lg border border-border bg-popover py-1 shadow-xl">
-              {actions.map((a) => (
-                <button
-                  key={a.label}
-                  onClick={() => {
-                    setMenuOpen(false);
-                    a.onClick();
-                  }}
-                  className={cn(
-                    "flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-accent",
-                    a.danger && "text-destructive",
-                  )}
-                >
-                  <a.icon className={cn("size-4", a.active && "fill-primary text-primary")} />
-                  {a.label}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+      {/* Mobile: single kebab → dropdown, portaled so it can't be clipped by a card's overflow-hidden */}
+      <div className="shrink-0 md:hidden">
+        <ActionMenu label="Actions" trigger={<MoreVertical className="size-4" />} items={actions} />
       </div>
     </div>
   );

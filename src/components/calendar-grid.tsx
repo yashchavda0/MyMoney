@@ -12,7 +12,7 @@ import {
   isSameMonth,
 } from "date-fns";
 import type { TransactionWithRefs } from "@/lib/supabase/types";
-import { todayISO, formatINRShort, formatDateLong } from "@/lib/format";
+import { todayISO, formatINRCompact, formatDateLong } from "@/lib/format";
 import { Modal } from "@/components/ui/modal";
 import { TransactionList } from "@/components/transaction-list";
 import { Card } from "@/components/ui/card";
@@ -108,7 +108,7 @@ export function CalendarGrid({
                       agg.net >= 0 ? "text-income" : "text-expense",
                     )}
                   >
-                    {formatINRShort(agg.net)}
+                    {formatINRCompact(agg.net)}
                   </span>
                   <span className="block text-[10px] leading-tight text-muted-foreground">
                     {agg.count} {agg.count === 1 ? "txn" : "txns"}

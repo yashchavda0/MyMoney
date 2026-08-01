@@ -26,8 +26,26 @@ export function formatINRShort(amount: number): string {
   return "₹" + inrCompactNumber.format(Math.round(amount ?? 0));
 }
 
+function trimTrailingZero(n: number): string {
+  return n.toFixed(1).replace(/\.0$/, "");
+}
+
+/** Compact magnitude format for net figures: ₹850, ₹85K, ₹1.2L, ₹1.2Cr - always short, keeps the native sign. */
+export function formatINRCompact(amount: number): string {
+  const n = amount ?? 0;
+  const sign = n < 0 ? "-" : "";
+  const abs = Math.abs(n);
+  if (abs < 1_000) return `${sign}₹${Math.round(abs)}`;
+  if (abs < 100_000) return `${sign}₹${trimTrailingZero(abs / 1_000)}K`;
+  if (abs < 10_000_000) return `${sign}₹${trimTrailingZero(abs / 100_000)}L`;
+  return `${sign}₹${trimTrailingZero(abs / 10_000_000)}Cr`;
+}
+
 /** Signed amount coloured by direction: +₹500 income, -₹500 expense. */
-export function signedAmount(amount: number, type: "income" | "expense"): string {
+export function signedAmount(
+  amount: number,
+  type: "income" | "expense",
+): string {
   const sign = type === "income" ? "+" : "-";
   return `${sign}${formatINR(Math.abs(amount))}`;
 }

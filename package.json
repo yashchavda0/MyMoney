@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
+    "@serwist/next": "^9.5.12",
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.7",
     "class-variance-authority": "^0.7.1",
@@ -24,6 +25,7 @@
     "react-dom": "19.2.4",
     "react-hook-form": "^7.82.0",
     "recharts": "^3.9.2",
+    "serwist": "^9.5.12",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
   },

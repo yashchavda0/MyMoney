@@ -36,19 +36,32 @@ export function MonthPicker({ month }: { month: string }) {
   }
 
   return (
-    <div className="relative flex w-full items-center gap-1">
-      <Button variant="outline" size="icon-sm" aria-label="Previous month" onClick={() => step(-1)}>
+    <div className="relative grid w-full grid-cols-[2rem_1fr_2rem] items-center gap-1">
+      <Button
+        variant="outline"
+        size="icon-sm"
+        className="h-8 w-8"
+        aria-label="Previous month"
+        onClick={() => step(-1)}
+      >
         <ChevronLeft className="size-4" />
       </Button>
 
       <button
+        type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex-1 rounded-md border border-border px-2 py-1 text-center text-sm font-medium transition-colors hover:bg-accent"
+        className="h-8 w-full rounded-md border border-border px-2 text-center text-sm font-medium transition-colors hover:bg-accent"
       >
         {formatMonthLong(month)}
       </button>
 
-      <Button variant="outline" size="icon-sm" aria-label="Next month" onClick={() => step(1)}>
+      <Button
+        variant="outline"
+        size="icon-sm"
+        className="h-8 w-8"
+        aria-label="Next month"
+        onClick={() => step(1)}
+      >
         <ChevronRight className="size-4" />
       </Button>
 

@@ -2,13 +2,14 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Upload, Download, Loader2, Check } from "lucide-react";
+import { Upload, Download, Loader2, Check, MoreVertical } from "lucide-react";
 import type { Account, Category, TransactionWithRefs } from "@/lib/supabase/types";
 import { parseImport, type ParsedRow } from "@/lib/parse-import";
 import { bulkCreateTransactions } from "@/app/actions/transactions";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
+import { ActionMenu } from "@/components/ui/action-menu";
 import { formatDate } from "@/lib/format";
 
 export function BulkTools({
@@ -46,13 +47,24 @@ export function BulkTools({
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={onExport} disabled={transactions.length === 0}>
-        {copied ? <Check className="size-4 text-income" /> : <Download className="size-4" />}
-        {copied ? "Copied" : "Copy"}
-      </Button>
-      <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-        <Upload className="size-4" /> Import
-      </Button>
+      <ActionMenu
+        label="Bulk actions"
+        trigger={<MoreVertical className="size-4" />}
+        triggerClassName="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-transparent text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+        items={[
+          {
+            label: copied ? "Copied" : "Copy",
+            icon: copied ? Check : Download,
+            onClick: onExport,
+            disabled: transactions.length === 0,
+          },
+          {
+            label: "Import",
+            icon: Upload,
+            onClick: () => setImportOpen(true),
+          },
+        ]}
+      />
       <ImportModal
         open={importOpen}
         onClose={() => setImportOpen(false)}
